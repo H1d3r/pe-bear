@@ -71,7 +71,7 @@ endif()
 if (USE_UDIS86)
     target_link_libraries( ${PROJECT_NAME} ${PARSER_LIB} ${UDIS86_LIB} )
 else()
-    target_link_libraries( ${PROJECT_NAME} ${PARSER_LIB} ${CAPSTONE_LIB} )
+    target_link_libraries( ${PROJECT_NAME} ${PARSER_LIB} capstone_static )
 endif()
 
 if(USE_QT4)

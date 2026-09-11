@@ -75,7 +75,7 @@ public:
 			}
 		}
 		if (this->m_arch == Executable::ARCH_ARM && this->m_bitMode == 64) {
-			if (detail->arm64.operands[argNum].type == ARM64_OP_IMM) {
+			if (detail->aarch64.operands[argNum].type == AARCH64_OP_IMM) {
 				return true;
 			}
 		}
@@ -100,7 +100,7 @@ public:
 			val = static_cast<x86_reg>(detail->x86.operands[argNum].imm);
 		}
 		if (this->m_arch == Executable::ARCH_ARM && this->m_bitMode == 64) {
-			val = static_cast<x86_reg>(detail->arm64.operands[argNum].imm);
+			val = static_cast<x86_reg>(detail->aarch64.operands[argNum].imm);
 		}
 		return val;
 	}
@@ -136,7 +136,7 @@ protected:
 
 	offset_t getArgVA_Intel(int index, int argNum, bool &isOk, const cs_insn &insn, const cs_detail &detail) const;
 	offset_t getArgVA_Arm64(int index, int argNum, bool &isOk, const cs_insn &insn, const cs_detail &detail) const;
-	int64_t backtraceReg_Arm64(int startIndx, arm64_reg reg, bool &isOk) const;
+	int64_t backtraceReg_Arm64(int startIndx, aarch64_reg reg, bool &isOk) const;
 	
 	bool isLongOp(const cs_insn &m_insn) const 
 	{
