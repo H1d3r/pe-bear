@@ -32,7 +32,7 @@ bool CDisasm::init_capstone(Executable::exe_arch arch, Executable::exe_bits bitM
 	if (arch == Executable::ARCH_INTEL) {
 		err = cs_open(CS_ARCH_X86, toCSmode(bitMode), &handle);
 	} else if (arch == Executable::ARCH_ARM && bitMode == Executable::BITS_64) {
-		err = cs_open(CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN, &handle);
+		err = cs_open(CS_ARCH_AARCH64, CS_MODE_LITTLE_ENDIAN, &handle);
 	} else if (arch == Executable::ARCH_ARM && bitMode == Executable::BITS_32) {
 		err = cs_open(CS_ARCH_ARM, CS_MODE_LITTLE_ENDIAN, &handle);
 	} else {
@@ -173,7 +173,7 @@ offset_t CDisasm::getArgVA_Intel(int index, int argNum, bool &isOk, const cs_ins
 	return va;
 }
 
-int64_t CDisasm::backtraceReg_Arm64(int startIndx, arm64_reg reg, bool& isOk) const
+int64_t CDisasm::backtraceReg_Arm64(int startIndx, aarch64_reg reg, bool& isOk) const
 {
 	using namespace minidis;
 	isOk = false;
@@ -189,35 +189,35 @@ int64_t CDisasm::backtraceReg_Arm64(int startIndx, arm64_reg reg, bool& isOk) co
 			break;
 		}
 		const cs_detail detail = m_details.at(index);
-		size_t cnt = static_cast<size_t>(detail.arm64.op_count);
+		size_t cnt = static_cast<size_t>(detail.aarch64.op_count);
 
 		if (cnt != 2 
-			|| detail.arm64.operands[0].type != ARM64_OP_REG
-			|| static_cast<arm64_reg>(detail.arm64.operands[0].mem.base) != reg)
+			|| detail.aarch64.operands[0].type != AARCH64_OP_REG
+			|| static_cast<aarch64_reg>(detail.aarch64.operands[0].mem.base) != reg)
 		{
 			continue;
 		}
 		
 		const cs_insn insn = m_table.at(index);
 		
-		if (insn.id == arm64_insn::ARM64_INS_ADRP
-			&& detail.arm64.operands[1].type == ARM64_OP_IMM 
+		if (insn.id == aarch64_insn::AARCH64_INS_ADRP
+			&& detail.aarch64.operands[1].type == AARCH64_OP_IMM 
 			)
 		{
-			va = detail.arm64.operands[1].imm; // the register is set to the immediate value
+			va = detail.aarch64.operands[1].imm; // the register is set to the immediate value
 			_isOk = true;
 			found = index;
 			//std::cout << "Found value for the register: " << reg << " = " << std::hex << va << "\n";
 			break;
 		}
 		
-		if (insn.id == arm64_insn::ARM64_INS_LDAR
-			&& detail.arm64.operands[1].type == ARM64_OP_MEM
+		if (insn.id == aarch64_insn::AARCH64_INS_LDAR
+			&& detail.aarch64.operands[1].type == AARCH64_OP_MEM
 			)
 		{
 			// Example: LDAR X9, [X8]
 			bool isOk2 = false;
-			arm64_reg reg2 = static_cast<arm64_reg>(detail.arm64.operands[1].mem.base);
+			aarch64_reg reg2 = static_cast<aarch64_reg>(detail.aarch64.operands[1].mem.base);
 			int64_t reg2_val = backtraceReg_Arm64(index, reg2, isOk2);
 			if (isOk2) {
 				//std::cout << "Backtrace for: " << reg << " Found value for the register2: " << reg2 << " = " << std::hex << reg2_val << "\n";
@@ -233,11 +233,11 @@ int64_t CDisasm::backtraceReg_Arm64(int startIndx, arm64_reg reg, bool& isOk) co
 		bool affectsReg = false;
 		
 		const cs_detail detail = m_details.at(index);
-		const size_t cnt = static_cast<size_t>(detail.arm64.op_count);
+		const size_t cnt = static_cast<size_t>(detail.aarch64.op_count);
 		
 		if (cnt > 0 
-			&& detail.arm64.operands[0].type == ARM64_OP_REG
-			&& static_cast<arm64_reg>(detail.arm64.operands[0].mem.base) == reg
+			&& detail.aarch64.operands[0].type == AARCH64_OP_REG
+			&& static_cast<aarch64_reg>(detail.aarch64.operands[0].mem.base) == reg
 			)
 		{
 			affectsReg = true;
@@ -250,30 +250,30 @@ int64_t CDisasm::backtraceReg_Arm64(int startIndx, arm64_reg reg, bool& isOk) co
 		/*
 		std::cout << "Checking: " << this->mnemStr(index).toStdString() << " Cnt: " << cnt << " { ";
 		for (size_t c = 0; c < cnt; c++) {
-			std::cout << " " <<  detail.arm64.operands[c].type;
+			std::cout << " " <<  detail.aarch64.operands[c].type;
 		}
 		std::cout << " }\n";
 		*/
-		if (insn.id == arm64_insn::ARM64_INS_LDR
+		if (insn.id == aarch64_insn::AARCH64_INS_LDR
 			&& cnt == 2
-			&& detail.arm64.operands[1].type == ARM64_OP_MEM
-			&& detail.arm64.operands[1].mem.base == reg
+			&& detail.aarch64.operands[1].type == AARCH64_OP_MEM
+			&& detail.aarch64.operands[1].mem.base == reg
 			)
 		{
-			va += detail.arm64.operands[1].mem.disp;
+			va += detail.aarch64.operands[1].mem.disp;
 			_isOk = true;
 			//std::cout << "Added: " << std::hex << va << "\n";
 		}
 		
-		if (insn.id == arm64_insn::ARM64_INS_ADD
+		if (insn.id == aarch64_insn::AARCH64_INS_ADD
 			&& cnt == 3
-			&& detail.arm64.operands[1].type == ARM64_OP_REG
-			&& detail.arm64.operands[1].mem.base == reg
-			&& detail.arm64.operands[2].type == ARM64_OP_IMM
+			&& detail.aarch64.operands[1].type == AARCH64_OP_REG
+			&& detail.aarch64.operands[1].mem.base == reg
+			&& detail.aarch64.operands[2].type == AARCH64_OP_IMM
 			)
 		{
 			//Example: ADD X9, X9, #0X288
-			va += detail.arm64.operands[2].imm;
+			va += detail.aarch64.operands[2].imm;
 			_isOk = true;
 			//std::cout << "Added: " << std::hex << va << "\n";
 		}
@@ -286,17 +286,17 @@ int64_t CDisasm::backtraceReg_Arm64(int startIndx, arm64_reg reg, bool& isOk) co
 
 offset_t CDisasm::getArgVA_Arm64(int index, int argNum, bool &isOk, const cs_insn &insn, const cs_detail &detail) const
 {
-	size_t cnt = static_cast<size_t>(detail.arm64.op_count);
+	size_t cnt = static_cast<size_t>(detail.aarch64.op_count);
 	if (argNum >= cnt) return INVALID_ADDR;
 	
 	offset_t va = INVALID_ADDR;
 	//immediate:
-	if (detail.arm64.operands[argNum].type == ARM64_OP_IMM) {
-		va = detail.arm64.operands[argNum].imm;
+	if (detail.aarch64.operands[argNum].type == AARCH64_OP_IMM) {
+		va = detail.aarch64.operands[argNum].imm;
 		isOk = true;
 	}
-	else if (argNum == 0 && detail.arm64.operands[argNum].type == ARM64_OP_REG) {
-		const arm64_reg reg = static_cast<arm64_reg>(detail.arm64.operands[argNum].mem.base);
+	else if (argNum == 0 && detail.aarch64.operands[argNum].type == AARCH64_OP_REG) {
+		const aarch64_reg reg = static_cast<aarch64_reg>(detail.aarch64.operands[argNum].mem.base);
 		va = backtraceReg_Arm64(index, reg, isOk);
 	}
 	return va;
@@ -395,32 +395,33 @@ minidis::mnem_type CDisasm::fetchMnemType_Arm64(const cs_insn &insn, const cs_de
 	using namespace minidis;
 
 	const unsigned int cMnem = insn.id;
-	if (cMnem == arm64_insn::ARM64_INS_UDF) {
+	if (cMnem == aarch64_insn::AARCH64_INS_UDF) {
 		return MT_INT3;
 	}
-	if (cMnem == arm64_insn::ARM64_INS_INVALID) {
+	if (cMnem == aarch64_insn::AARCH64_INS_INVALID) {
 		return MT_INVALID;
 	}
-	if (cMnem == arm64_insn::ARM64_INS_NOP) {
+	// Capstone v6: NOP is not a real instruction but an alias of HINT #0
+	if (cMnem == aarch64_insn::AARCH64_INS_HINT && insn.is_alias && insn.alias_id == AARCH64_INS_ALIAS_NOP) {
 		return MT_NOP;
 	}
-	if (cMnem == arm64_insn::ARM64_INS_ADRP 
-		|| cMnem == arm64_insn::ARM64_INS_LDR
-		|| cMnem == arm64_insn::ARM64_INS_MOV)
+	if (cMnem == aarch64_insn::AARCH64_INS_ADRP 
+		|| cMnem == aarch64_insn::AARCH64_INS_LDR
+		|| cMnem == aarch64_insn::AARCH64_INS_MOV)
 	{
 		return MT_MOV;
 	}
 	for (size_t i = 0; i < detail.groups_count; i++) {
-		if (detail.groups[i] == ARM64_GRP_CALL) return MT_CALL;
-		if (detail.groups[i] == ARM64_GRP_RET) return MT_RET;
-		if (detail.groups[i] == ARM64_GRP_INT)  return MT_INTX;
+		if (detail.groups[i] == AARCH64_GRP_CALL) return MT_CALL;
+		if (detail.groups[i] == AARCH64_GRP_RET) return MT_RET;
+		if (detail.groups[i] == AARCH64_GRP_INT)  return MT_INTX;
 		
-		if (detail.groups[i] == ARM64_GRP_JUMP || detail.groups[i] == ARM64_GRP_BRANCH_RELATIVE) {
+		if (detail.groups[i] == AARCH64_GRP_JUMP || detail.groups[i] == AARCH64_GRP_BRANCH_RELATIVE) {
 			switch (cMnem) {
-				case arm64_insn::ARM64_INS_CBZ:
-				case arm64_insn::ARM64_INS_CBNZ:
-				case arm64_insn::ARM64_INS_TBNZ:
-				case arm64_insn::ARM64_INS_TBZ:
+				case aarch64_insn::AARCH64_INS_CBZ:
+				case aarch64_insn::AARCH64_INS_CBNZ:
+				case aarch64_insn::AARCH64_INS_TBNZ:
+				case aarch64_insn::AARCH64_INS_TBZ:
 					return MT_COND_JUMP;
 			}
 			return MT_JUMP;
@@ -495,10 +496,10 @@ bool CDisasm::isAddrOperand(int index) const
 	}
 	// Arm64
 	else if (this->m_arch == Executable::ARCH_ARM && this->m_bitMode == 64) {
-		const size_t cnt = static_cast<size_t>(detail.arm64.op_count);
+		const size_t cnt = static_cast<size_t>(detail.aarch64.op_count);
 
 		for (int argNum = 0; argNum < cnt; argNum++) {
-			if (detail.arm64.operands[argNum].type == ARM64_OP_IMM)
+			if (detail.aarch64.operands[argNum].type == AARCH64_OP_IMM)
 			{
 				return true;
 			}
@@ -544,14 +545,14 @@ bool CDisasm::isFollowable(const int y) const
 	}
 	// ARM
 	else if (this->m_arch == Executable::ARCH_ARM && this->m_bitMode == 64) {
-		size_t cnt = static_cast<size_t>(detail->arm64.op_count);
+		size_t cnt = static_cast<size_t>(detail->aarch64.op_count);
 		if (!cnt) {
 			return false;
 		}
-		if (detail->arm64.operands[argNum].type == ARM64_OP_IMM) {
+		if (detail->aarch64.operands[argNum].type == AARCH64_OP_IMM) {
 			return true;
 		}
-		if (cnt == 1 && detail->arm64.operands[argNum].type == ARM64_OP_REG) {
+		if (cnt == 1 && detail->aarch64.operands[argNum].type == AARCH64_OP_REG) {
 			return true;
 		}
 	}
