@@ -334,7 +334,7 @@ ELSE()
 ENDIF()
 
 target_link_libraries( ${PROJECT_NAME} ${SIGFIND_LIB} ${PARSER_LIB} )
-target_link_libraries (${PROJECT_NAME}  ${DISASM_LIB} ${CAPSTONE_LIB} )
+target_link_libraries (${PROJECT_NAME}  ${DISASM_LIB} capstone_static )
 
 if(USE_QT4)
 	target_link_libraries (${PROJECT_NAME} ${QT_QTGUI_LIBRARIES} ${QT_QTCORE_LIBRARIES})

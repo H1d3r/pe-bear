@@ -71,12 +71,17 @@ if(CAPSTONE_ARM_SUPPORT)
 	add_compile_definitions(USE_ARM32)
 endif()
 
+# Capstone v6 builds its fuzzer unconditionally; keep it out of 'all'
+if(TARGET fuzz_disasm)
+    set_target_properties(fuzz_disasm PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
+
 # Add sub-directories
 #
 # libs
 
 add_subdirectory(${M_CAPSTONE})
-set(CAPSTONE_LIB $<TARGET_FILE:capstone> CACHE PATH "Capstone library path")
+set(CAPSTONE_LIB $<TARGET_FILE:capstone_static> CACHE PATH "Capstone library path")
 
 add_subdirectory(${M_BEARPARSER})
 set(PARSER_LIB $<TARGET_FILE:bearparser> CACHE PATH "BearParser library path")
@@ -90,6 +95,6 @@ set(SIGFIND_LIB $<TARGET_FILE:sig_finder> CACHE PATH "SigFinder library path")
 # executables
 add_subdirectory(pe-bear)
 
-add_dependencies(libdisasm bearparser capstone)
-add_dependencies(PE-bear bearparser sig_finder libdisasm capstone)
+add_dependencies(libdisasm bearparser capstone_static)
+add_dependencies(PE-bear bearparser sig_finder libdisasm capstone_static)
 
